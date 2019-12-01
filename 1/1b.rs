@@ -11,7 +11,7 @@ fn compute_fuel(weight: f64) -> f64 {
     }
 }
 
-fn read_and_compute_initial_weight() -> f64 {
+fn read_lines_and_compute_total_fuel() -> f64 {
     let filename = "input.txt";
     let file = File::open(filename).unwrap();
     let reader = BufReader::new(file);
@@ -30,7 +30,7 @@ fn read_and_compute_initial_weight() -> f64 {
 }
 
 fn main() {
-    let total_fuel = read_and_compute_initial_weight();
+    let total_fuel = read_lines_and_compute_total_fuel();
 
     println!("Fuel with fuel of fuel: {}", total_fuel);
 }
