@@ -25,7 +25,6 @@ fn main() {
         }
         let res_index = input_vector[cur_base_index + 3] as usize;
         input_vector[res_index] = res;
-        println!("{:?}", input_vector);
     }
     println!("result: {}", input_vector[0]);
 }
