@@ -11,14 +11,17 @@ fn compute_result(input_vector: &Vec<u64>, init1: u64, init2: u64) -> u64 {
         let op1 = input_vector[input_vector[cur_base_index + 1] as usize];
         let op2 = input_vector[input_vector[cur_base_index + 2] as usize];
         let res;
-        if op_code == 1 {
-            res = op1 + op2;
-        } else if op_code == 2 {
-            res = op1 * op2;
-        } else if op_code == 99 {
-            break;
-        } else {
-            panic!(format!("unknown op code: {}", op_code));
+        match op_code {
+            1 => {
+                res = op1 + op2;
+            },
+            2 => {
+                res = op1 * op2;
+            },
+            99 => {
+                break;
+            },
+            _ => panic!(format!("unknown op code: {}", op_code))
         }
         let res_index = input_vector[cur_base_index + 3] as usize;
         input_vector[res_index] = res;
