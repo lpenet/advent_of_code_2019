@@ -1,11 +1,15 @@
+use std::env;
+
 fn main() {
-    let interval_start:i64 = 248345;
-    let interval_end:i64 = 746315;
+    let args:Vec<String> = env::args().collect();
+    if args.len() < 3 {
+        panic!("Syntax : {} <interval_start> <interval_end>",args[0]);
+    }
+    let interval_start:i64 = args[1].parse::<i64>().expect("Invalid start of interval");
+    let interval_end:i64 = args[2].parse::<i64>().expect("Invalid end of interval");
     let mut nb_compatible = 0;
-    let mut cur = interval_start;
-    while cur < interval_end {
+    for cur in interval_start..interval_end {
         let cur_str = cur.to_string();
-        cur = cur+1;
         let vec_digits: Vec<u8> = cur_str.as_bytes().iter().map(|b| (b - '0' as u8) as u8).collect();
         let mut sorted_vec = vec_digits.clone();
         sorted_vec.sort();
