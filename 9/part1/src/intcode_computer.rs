@@ -46,8 +46,20 @@ impl Processor {
                     self.assign_offset(mode_1st, param1, **input.next().unwrap());
                 },
                 4 => {
-                    let param1: i64 = self.memory[Processor::get_from_cursor(&mut self.cur) as usize]; 
-                    println!("{}",self.translate_offset(mode_1st,param1));
+                    let param1: i64 = self.memory[Processor::get_from_cursor(&mut self.cur) as usize];
+                    let output;
+                    match mode_1st {
+                        0 => {
+                            output = self.memory[param1 as usize];
+                        },
+                        2 => {
+                            output = self.memory[(param1+self.relative_offset as i64) as usize];
+                        },
+                        _ => {
+                            panic!("Unsupported mode");
+                        }
+                    }
+                    println!("{}",output);
                 },
                 5 => {
                     let param1: i64 = self.decode_param(mode_1st);
