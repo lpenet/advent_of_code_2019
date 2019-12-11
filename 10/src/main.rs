@@ -40,33 +40,29 @@ impl AsteroidField {
         let mut asteroids = Vec::<Asteroid>::new();        
         let file = File::open(filename).unwrap();
         let reader = BufReader::new(file);
-        let mut canon_index = 0;
         for (y, line) in reader.lines().enumerate() {
             let line = line.unwrap();
             if !line.trim().is_empty() {
                 for (x, ch) in line.as_bytes().iter().enumerate() {
-                    if *ch == '#' as u8 {
+                    if *ch == '#' as u8  || *ch == 'X' as u8 {
                         asteroids.push(Asteroid {
                             x: x as u32,
                             y: y as u32
                         });
-                    } else if *ch == 'X' as u8 {
-                        asteroids.push(Asteroid {
-                            x: x as u32,
-                            y: y as u32
-                        });
-                        canon_index = asteroids.len() - 1;
                     }
                 }
             }
         }
 
-        AsteroidField {
+        let mut ret = AsteroidField {
             asteroids,
-            canon_index,
+            canon_index : 0,
             canon_direction: Vector2::<f64> { x: 0., y: -1. },
             former_angle: None
-        }
+        };
+        let best = ret.find_best_asteroid();
+        ret.canon_index = ret.asteroids.iter().position(|&aster| aster == best.0).unwrap();
+        ret
     }
 
     fn compute_others_in_sight(&self) -> Vec<(Asteroid,u32)> {
@@ -106,11 +102,6 @@ impl AsteroidField {
             displacements.push((*a,canon_position.displacement(&a)));
         }
 
-        println!("canon {:?}", self.canon_direction);
-        match self.former_angle {
-            Some(x) => println!("former angle: {}", x),
-            None => println!("no former angle")
-        }
         let mut angles_distances: Vec<(Asteroid,f64,f64)> = 
             displacements.iter().map(|d| (d.0, AsteroidField::modulo(&d.1.angle(self.canon_direction).neg().s), d.1.length()))
             .collect();
@@ -122,9 +113,12 @@ impl AsteroidField {
             }
         });
         angles_distances.reverse();
-        println!("{:?}", angles_distances);
         match self.former_angle {
-            Some(x) => if angles_distances.len() > 1 { angles_distances.retain(|(aster, angle, distance)| angle.abs() > 1e-2) },
+            Some(x) => {
+                let mut angles_only: Vec<f64> = angles_distances.iter().map(|(aster, angle, distance)| *angle).collect();
+                angles_only.dedup();
+                if angles_only.len() > 1 { angles_distances.retain(|(aster, angle, distance)| angle.abs() > 1e-4) }
+            },
             None => { }
         }
         let shooted = angles_distances.pop().unwrap();
@@ -134,6 +128,14 @@ impl AsteroidField {
         self.asteroids.retain(|i| *i != shooted);
         self.canon_index = self.asteroids.iter().position(|&aster| aster == canon_position).unwrap();
         shooted
+    }
+
+    fn shoot_all_asteroids(&mut self) -> Vec<Asteroid> {
+        let mut ret = Vec::<Asteroid>::new();
+        while self.asteroids.len() > 1 {
+            ret.push(self.shoot_asteroid());
+        }
+        ret
     }
 
     fn modulo(param: &f64) -> f64 {
@@ -261,7 +263,10 @@ fn main() {
         panic!("Syntax : {} <inputi file>",args[0]);
     }
     let input_file = &args[1];
-    let asteroid_field = AsteroidField::load_file(&input_file);
+    let mut asteroid_field = AsteroidField::load_file(&input_file);
     let result = asteroid_field.find_best_asteroid();
-    println!("{:?}", result);
+    println!("part1 : {:?}", result);
+    let shoot_all = asteroid_field.shoot_all_asteroids();
+    let result = shoot_all[199].x*100+shoot_all[199].y;
+    println!("part2 : {:?}", result);
 }
