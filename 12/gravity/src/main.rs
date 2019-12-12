@@ -1,6 +1,9 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
+// we *should* handle each dimension as (p, vp) and make a planet a vector of those dimension
+// it would avoid copy/paste
+// but well...
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 struct Planet {
     x: i64,
@@ -104,6 +107,51 @@ impl PlanetarySystem {
     fn total_energy(&self) -> i64 {
         self.planets.iter().map(|p| p.total_energy()).sum()
     }
+
+    fn find_velocity_cycles_durations(&mut self) -> (i64,i64,i64) {
+        let mut vx_duration: Option<i64> = None;
+        let mut vy_duration: Option<i64> = None;
+        let mut vz_duration: Option<i64> = None;
+        let initial_x: Vec<i64> = self.planets.iter().map(|p| p.x).collect();
+        let initial_y: Vec<i64> = self.planets.iter().map(|p| p.y).collect();
+        let initial_z: Vec<i64> = self.planets.iter().map(|p| p.z).collect();
+        let initial_vx: Vec<i64> = self.planets.iter().map(|p| p.vx).collect();
+        let initial_vy: Vec<i64> = self.planets.iter().map(|p| p.vy).collect();
+        let initial_vz: Vec<i64> = self.planets.iter().map(|p| p.vz).collect();
+
+        let mut cur_step: i64 = 0;
+        while vx_duration.is_none() || vy_duration.is_none() || vz_duration.is_none() {
+            self.time_step();
+            cur_step = cur_step+1;
+            if vx_duration.is_none() {
+                let cur_x: Vec<i64> = self.planets.iter().map(|p| p.x).collect();
+                let cur_vx: Vec<i64> = self.planets.iter().map(|p| p.vx).collect();
+                if cur_x == initial_x && cur_vx == initial_vx {
+                    vx_duration = Some(cur_step);
+                }
+            }
+            if vy_duration.is_none() {
+                let cur_y: Vec<i64> = self.planets.iter().map(|p| p.y).collect();
+                let cur_vy: Vec<i64> = self.planets.iter().map(|p| p.vy).collect();
+                if cur_y == initial_y && cur_vy == initial_vy {
+                    vy_duration = Some(cur_step);
+                }
+            }
+            if vz_duration.is_none() {
+                let cur_z: Vec<i64> = self.planets.iter().map(|p| p.z).collect();
+                let cur_vz: Vec<i64> = self.planets.iter().map(|p| p.vz).collect();
+                if cur_z == initial_z && cur_vz == initial_vz {
+                    vz_duration = Some(cur_step);
+                }
+            }
+        }
+        (vx_duration.unwrap(), vy_duration.unwrap(), vz_duration.unwrap())
+    }
+
+    fn find_shortest_system_cycle(&mut self) -> i64 {
+        let cycles = self.find_velocity_cycles_durations();
+        num::integer::lcm(cycles.0,num::integer::lcm(cycles.1,cycles.2))
+    }
 }
 
 #[cfg(test)]
@@ -167,7 +215,14 @@ fn part1() {
     println!("Total energy: {}", system.total_energy());
 }
 
+fn part2() {
+    let mut system: PlanetarySystem = PlanetarySystem::load_file("input.txt");
+    let cycle_duration = system.find_shortest_system_cycle();
+    println!("Shortest system cycle: {}", cycle_duration);
+}
+
 fn main() {
-   part1(); 
+   part1();
+   part2();
 }
 
