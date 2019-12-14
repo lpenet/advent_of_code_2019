@@ -2,7 +2,7 @@ use std::fs;
 
 #[derive(Clone)]
 pub struct Processor {
-    memory: Vec<i64>,
+    pub memory: Vec<i64>,
     cur: u32,
     relative_offset: u32
 }
@@ -16,8 +16,11 @@ impl Processor {
         }
     }
 
-    pub fn process(&mut self, inputs: &Vec<&i64>) -> Option<i64> {
-        let mut input = inputs.iter();
+    pub fn reset_pointer(&mut self) {
+        self.cur = 0;
+    }
+
+    pub fn process(&mut self, f: &dyn Fn() -> i64) -> Option<i64> {
         loop {
             let full_op_code: i64 = self.memory[Processor::get_from_cursor(&mut self.cur) as usize];
             let full_op_code: Vec<u8> = format!("{:05}", full_op_code).to_string().as_bytes().iter().map(|b| (b - '0' as u8) as u8).collect();
@@ -44,7 +47,7 @@ impl Processor {
                 },
                 3 => {
                     let param1: i64 = self.memory[Processor::get_from_cursor(&mut self.cur) as usize];
-                    self.assign_offset(mode_1st, param1, **input.next().unwrap());
+                    self.assign_offset(mode_1st, param1, f());
                 },
                 4 => {
                     let param1: i64 = self.memory[Processor::get_from_cursor(&mut self.cur) as usize];
