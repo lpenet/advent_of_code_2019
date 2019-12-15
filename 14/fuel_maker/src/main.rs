@@ -13,6 +13,7 @@ struct Chemical {
     name: String,
     build_increment: u32,
     available: u32,
+    built: u32,
     inputs: Vec<ChemicalInput>
 }
 
@@ -22,6 +23,7 @@ impl Chemical {
             name,
             build_increment,
             available:0,
+            used: 0,
             inputs
         }
     }
@@ -70,6 +72,31 @@ impl ChemicalRegistry {
         ret.chemicals.insert(ORE.to_string(), Chemical::new(ORE.to_string(), 1, vec!()));
         ret
     }
+
+    fn prepare(&mut self, element_name: &str, quantity: u32) {
+        let chemical = self.chemicals.get(element_name);
+        if chemical.is_none() {
+            return Err("Element not found");
+        }
+        let mut chemical = chemical.unwrap();
+        if chemical.available < quantity {
+            let packets_to_build = (math::round::ceil((quantity - chemical.available) as f64)/(chemical.build_increment as f64)) as u32;
+            let built_count = packets_to_build * chemical.build_increment;
+            chemical.available = chemical.available + built_count;
+            chemical.built = chemiocal.built + built_count;
+            for ingredient in self.inputs {
+                self.prepare(ingredient.name, ingredient.count * packets_to_build);
+            }
+        }
+        chemical.available = chemical.available - quantity;
+    }
+
+    fn get_use_material_count(&self, element_name: &str) -> Result<u32, &'static str> {
+        let chemical = self.chemicals.get(element_name);
+        match chemical {
+            Some(x) => return Ok(x),
+            None => return Err("Unknown element");
+        }
 }
 
 #[cfg(test)]
@@ -88,6 +115,12 @@ mod chemical_registry_tests {
         assert_eq!(chem_e.available, 0);
         assert_eq!(chem_e.inputs, vec!(ChemicalInput { name: "A".to_string(), count: 7 }, ChemicalInput { name: "D".to_string(), count: 1 }));
     }
+
+    #[test]
+    fn test_build_fuel_1() {
+        let registry: ChemicalRegistry = ChemicalRegistry::load("test1.in");
+        registry.prepare("FUEL", 1);
+        assert_eq!(registry.get_used_material_count("ORE"), 31);
 }
 
 fn main() {
