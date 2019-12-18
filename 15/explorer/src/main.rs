@@ -6,6 +6,7 @@ use std::io::{BufWriter, stdout};
 use std::path::PathBuf;
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 mod intcode_computer;
 use intcode_computer::Processor;
@@ -126,7 +127,7 @@ impl AreaInfo {
         }
     }
 
-    fn map_area(&mut self, program_filename: &str) {
+    fn map_area(&mut self, program_filename: &str, show_progress: bool) {
         let mut processor = Processor::init(program_filename);
         while !self.complete {
             let output = processor.process(self).clone();
@@ -146,17 +147,39 @@ impl AreaInfo {
                 None => return ()
             }
             self.fix_area(&self.robot_track.last().unwrap().clone());
-            self.output_image();
-            std::thread::sleep(std::time::Duration::from_millis(100));
-            print!("{}[2J", 27 as char);
-            if self.leak_distance.is_some() {
-                println!("Leak distance: {}", self.leak_distance.unwrap());
-            } else {
-                println!("Leak not found yet");
+            if show_progress {
+                self.output_image();
+                std::thread::sleep(std::time::Duration::from_millis(20));
+                print!("{}[2J", 27 as char);
+                if self.leak_distance.is_some() {
+                    println!("Leak distance: {}", self.leak_distance.unwrap());
+                } else {
+                    println!("Leak not found yet");
+                }
+                println!("Robot distance: {}", self.distance.get(self.robot_track.last().unwrap()).unwrap());
+                AreaInfo::display_image();
             }
-            println!("Robot distance: {}", self.distance.get(self.robot_track.last().unwrap()).unwrap());
-            AreaInfo::display_image();
         }
+    }
+
+    fn output_image_hashmap(&self, to_display: &HashMap<Point,u8>) {
+        let file = File::create(IMAGE_FILENAME).unwrap();
+        let ref mut w = BufWriter::new(file);
+        let cols = self.max_x - self.min_x + 1;
+        let rows = self.max_y - self.min_y + 1;
+
+        let mut encoder = png::Encoder::new(w, cols as u32, rows as u32);
+        encoder.set_color(png::ColorType::RGB);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().unwrap();
+        let mut vec: Vec<u8> = vec![0; (cols*rows*3) as usize];
+        for (key,val) in to_display.iter() {
+            let base_index: usize = (((key.x - self.min_x) + ((key.y - self.min_y)*cols))*3) as usize;
+            vec[base_index] = 0;
+            vec[base_index+1] = 255;
+            vec[base_index+2] = 0;
+        }
+        writer.write_image_data(&vec).unwrap();
     }
 
     fn output_image(&mut self) {
@@ -200,6 +223,37 @@ impl AreaInfo {
         let img = termimage::ops::load_image(&image_tuple, format).unwrap();
         termimage::ops::write_ansi_truecolor(&mut stdout(), &img);
     }
+
+    fn oxygen_filling_time(&self, show_progress: bool) -> i64{
+        let mut to_fill = self.nature.clone();
+        let mut front:HashSet<Point> = to_fill.iter().filter(|&(_,v)| *v == 2).map(|(k,_)| k.clone()).collect();
+        to_fill.retain(|_,v| *v == 1);
+
+        let mut steps: i64 = 0;
+        while !to_fill.is_empty() {
+            steps = steps+1;
+            let mut new_front = HashSet::<Point>::new();
+            for v in front {
+                for m in 1..5 {
+                    let mut cur_point = v.clone();
+                    cur_point.do_move(m);
+                    if to_fill.contains_key(&cur_point) {
+                        new_front.insert(cur_point);
+                    }
+                }
+            }
+            front = new_front;
+            to_fill.retain(|&k, _| !front.contains(&k));
+            if show_progress {
+                self.output_image_hashmap(&to_fill);
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                print!("{}[2J", 27 as char);
+                AreaInfo::display_image();
+            }
+            
+        }
+        steps
+    }
 }
 
 impl InputCallback for AreaInfo {
@@ -210,9 +264,14 @@ impl InputCallback for AreaInfo {
             new_pos.do_move(m);
             if !self.distance.contains_key(&new_pos) {
                 let new_distance = self.compute_min_known_distance(&new_pos);
+                /*
+                 * This heuristic makes the first part quicker, as we do not need to explore all
+                 * map.
+                 * But we need a full map for second part...
                 if self.leak_distance.is_some() && new_distance > self.leak_distance.unwrap() {
                     continue;
                 }
+                */
                 self.distance.insert(new_pos, new_distance);
                 self.robot_track.push(new_pos);
                 self.adjust_min_max(&new_pos);
@@ -236,5 +295,9 @@ impl InputCallback for AreaInfo {
 
 fn main() {
     let mut area = AreaInfo::new();
-    area.map_area("input.txt");
+    // pass true to have a progress display
+    area.map_area("input.txt", false);
+    println!("lead distance: {}", area.leak_distance.unwrap());
+    // pass true to have a progress display
+    println!("oxygen filling time: {}", area.oxygen_filling_time(false));
 }
