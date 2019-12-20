@@ -1,6 +1,6 @@
 use std::fs;
 
-fn compute_mask_value(param_len: usize, step: usize, index: usize) -> i32 {
+fn compute_mask_value(step: usize, index: usize) -> i32 {
     let mask: [i32; 4] = [0, 1, 0, -1];
     mask[((index+1)%(4*(step+1)))/(step+1)]
 
@@ -13,7 +13,7 @@ fn one_fft_pass(cur_input: &Vec<u8>) -> Vec<u8> {
     for step in 0..param_len {
         let mut accum: i32 = 0;
         for i in 0..param_len {
-            let mask_value = compute_mask_value(param_len,step, i);
+            let mask_value = compute_mask_value(step, i);
             accum = accum + (cur_input[i] as i32 * mask_value) as i32;
         }
         let digit = (accum.abs() % 10) as u8;
@@ -111,7 +111,7 @@ fn part1() {
 }
 
 fn part2() {
-    let mut input: Vec<u8> = string_to_vec_u8(&fs::read_to_string("input.txt").unwrap());
+    let input: Vec<u8> = string_to_vec_u8(&fs::read_to_string("input.txt").unwrap());
     let mut cur = Vec::<u8>::new();
     let mut tmp = Vec::<u8>::new();
     for _ in 0..100 {
@@ -125,7 +125,7 @@ fn part2() {
     let first7: &str = std::str::from_utf8(&vec_first7).unwrap();
     let first7: usize = first7.parse::<usize>().unwrap();
     let mut cur: Vec<u8> = cur[first7..].to_vec();
-    for i in 0..100 {
+    for _ in 0..100 {
         cur = one_fft_pass_2(&cur);
     }
 
